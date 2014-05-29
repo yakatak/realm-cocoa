@@ -289,6 +289,11 @@ static NSArray *s_objectDescriptors = nil;
         [realm beginReadTransaction];
     }
     
+    // add an event to the next event loop to ensure we don't get released before the end of the event
+    // loop - the method we call doesn't matter, we just use this to hold onto the realm
+    // doing this gives the user the chance to retain the Realm instance or another object holding the
+    // realm before it is disposed of (which can happen mid event in release builds).
+    [realm->_runLoop performSelector:@selector(isReadOnly) target:realm argument:nil order:0 modes:@[NSRunLoopCommonModes]];
     return realm;
 }
 
