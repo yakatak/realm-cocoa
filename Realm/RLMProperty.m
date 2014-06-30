@@ -43,6 +43,16 @@
     return self;
 }
 
++ (instancetype)propertyWithName:(NSString *)name type:(RLMPropertyType)type objectClassName:(NSString *)objectClassName {
+    RLMProperty *prop = [[RLMProperty alloc] init];
+    prop->_name = name;
+    prop->_type = type;
+    prop->_objectClassName = objectClassName;
+    [prop updateAccessorNames];
+    [prop setObjcCodeFromType];
+    return prop;
+}
+
 -(void)updateAccessorNames {
     // populate getter/setter names if generic
     if (!_getterName) {
@@ -126,7 +136,9 @@
                 // verify type
                 Class cls = NSClassFromString(self.objectClassName);
                 if (class_getSuperclass(cls) != RLMObject.class) {
-                    @throw [NSException exceptionWithName:@"RLMException" reason:@"Encapsulated properties must descend from RLMObject" userInfo:nil];
+                    @throw [NSException exceptionWithName:@"RLMException"
+                                                   reason:[NSString stringWithFormat:@"Property of type '%@' must descend from RLMObject", self.objectClassName]
+                                                 userInfo:nil];
                 }
             }
             else {
@@ -137,7 +149,9 @@
                 // verify type
                 Class cls = NSClassFromString(self.objectClassName);
                 if (class_getSuperclass(cls) != RLMObject.class) {
-                    @throw [NSException exceptionWithName:@"RLMException" reason:@"Encapsulated properties must descend from RLMObject" userInfo:nil];
+                    @throw [NSException exceptionWithName:@"RLMException"
+                                                   reason:[NSString stringWithFormat:@"Property of type '%@' must descend from RLMObject", self.objectClassName]
+                                                 userInfo:nil];
                 }
             }
             return YES;
@@ -196,6 +210,19 @@
     [prop updateAccessorNames];
     
     return prop;
+}
+
+
+-(BOOL)isEqualToProperty:(RLMProperty *)prop {
+    return [_name isEqualToString:prop.name] && _type == prop.type &&
+           (_objectClassName == nil || [_objectClassName isEqualToString:prop.objectClassName]);
+}
+
+- (BOOL)isEqual:(id)object {
+    if (![object isKindOfClass:RLMProperty.class]) {
+        return NO;
+    }
+    return [self isEqualToProperty:object];
 }
 
 @end

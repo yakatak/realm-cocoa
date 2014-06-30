@@ -19,27 +19,6 @@
 #import "RLMTestCase.h"
 #import "RLMSchema.h"
 
-#pragma mark - Class Extensions
-
-@interface RLMRealm ()
-+ (instancetype)realmWithPath:(NSString *)path
-                     readOnly:(BOOL)readonly
-                      dynamic:(BOOL)dynamic
-                        error:(NSError **)outError;
-@end
-
-#pragma mark - Test Objects
-
-@interface DynamicObject : RLMObject
-@property NSString *stringCol;
-@property NSInteger intCol;
-@end
-
-@implementation DynamicObject
-@end
-
-#pragma mark - Tests
-
 @interface DynamicTests : RLMTestCase
 @end
 
@@ -57,7 +36,7 @@
         [realm commitWriteTransaction];
     }
     
-    RLMRealm *dyrealm = [RLMRealm realmWithPath:RLMTestRealmPath() readOnly:YES dynamic:YES error:nil];
+    RLMRealm *dyrealm = [self dynamicRealmWithTestPathAndSchema:nil];
     XCTAssertNotNil(dyrealm, @"realm should not be nil");
     XCTAssertEqual([dyrealm class], [RLMRealm class], @"realm should be of class RLMDynamicRealm");
     
@@ -75,7 +54,7 @@
                       @"Array class should by a dynamic object class");
 }
 
-- (void)testDynaimcProperties {
+- (void)testDynamicProperties {
     @autoreleasepool {
         // open realm in autoreleasepool to create tables and then dispose
         RLMRealm *realm = [RLMRealm realmWithPath:RLMTestRealmPath() readOnly:NO error:nil];
@@ -86,7 +65,7 @@
     }
     
     // verify properties
-    RLMRealm *dyrealm = [RLMRealm realmWithPath:RLMTestRealmPath() readOnly:YES dynamic:YES error:nil];
+    RLMRealm *dyrealm = [self dynamicRealmWithTestPathAndSchema:nil];
     RLMArray *array = [dyrealm allObjects:@"DynamicObject"];
     
     RLMObject *o1 = array[0], *o2 = array[1];
@@ -95,7 +74,7 @@
     XCTAssertThrows(o1[@"invalid"], @"Invalid column name should throw");
 }
 
-- (void)testDynaimcTypes {
+- (void)testDynamicTypes {
     NSDate *now = [NSDate dateWithTimeIntervalSince1970:100000];
     id obj1 = @[@YES, @1, @1.1f, @1.11, @"string", [NSData dataWithBytes:"a" length:1], now, @YES, @11, @0, NSNull.null];
     
@@ -112,7 +91,7 @@
     }
     
     // verify properties
-    RLMRealm *dyrealm = [RLMRealm realmWithPath:RLMTestRealmPath() readOnly:NO dynamic:YES error:nil];
+    RLMRealm *dyrealm = [self dynamicRealmWithTestPathAndSchema:nil];
     RLMArray *array = [dyrealm allObjects:AllTypesObject.className];
     XCTAssertEqual(array.count, (NSUInteger)2, @"Should have 2 objects");
     
