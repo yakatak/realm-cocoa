@@ -16,22 +16,10 @@
 //
 ////////////////////////////////////////////////////////////////////////////
 
-#import "ModelObject.h"
+#import <Realm/Realm.h>
 
-@implementation ModelObject
+@interface RLMSchema (JSON)
 
-// Specify default values for properties
-
-//+ (NSDictionary *)defaultPropertyValues
-//{
-//    return @{};
-//}
-
-// Specify properties to ignore (Realm won't persist these)
-
-//+ (NSArray *)ignoredProperties
-//{
-//    return @[];
-//}
++ (instancetype)schemaFromJSON:(NSString *)json;
 
 @end

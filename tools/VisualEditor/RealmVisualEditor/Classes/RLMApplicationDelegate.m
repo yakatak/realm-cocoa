@@ -23,6 +23,7 @@
 #import "TestClasses.h"
 
 NSString *const kRealmFileExension = @"realm";
+NSString *const kJSONFileExension = @"json";
 
 const NSUInteger kTestDatabaseSizeMultiplicatorFactor = 1;
 const NSUInteger kTopTipDelay = 250;
@@ -35,7 +36,7 @@ const NSUInteger kTopTipDelay = 250;
                                               forKey:@"NSInitialToolTipDelay"];
     
     NSInteger openFileIndex = [self.fileMenu indexOfItem:self.openMenuItem];
-    [self.fileMenu performActionForItemAtIndex:openFileIndex];    
+    [self.fileMenu performActionForItemAtIndex:openFileIndex];
 }
 
 - (BOOL)application:(NSApplication *)application openFile:(NSString *)filename
@@ -73,11 +74,11 @@ const NSUInteger kTopTipDelay = 250;
     NSURL *url = [directories firstObject];
     
     // Prompt the user for location af new realm file.
-    [self showSavePanelStringFromDirectory:url completionHandler:^(BOOL userSelectesFile, NSURL *selectedFile) {
+    [self showSavePanelStringFromDirectory:url completionHandler:^(BOOL userSelectedFile, NSURL *selectedFile) {
         // If the user has selected a file url for storing the demo database, we first check if the
         // file already exists (and is actually a file) we delete the old file before creating the
         // new demo file.
-        if (userSelectesFile) {
+        if (userSelectedFile) {
             NSString *path = selectedFile.path;
             BOOL isDirectory = NO;
             
@@ -99,7 +100,7 @@ const NSUInteger kTopTipDelay = 250;
                 alert.showsHelp = NO;
                 alert.informativeText = @"A new demo database has been generated. Do you want to open the new database?";
                 alert.messageText = @"Open demo database?";
-                [alert addButtonWithTitle:@"Ok"];
+                [alert addButtonWithTitle:@"OK"];
                 [alert addButtonWithTitle:@"Cancel"];
 
                 NSUInteger response = [alert runModal];
@@ -107,15 +108,45 @@ const NSUInteger kTopTipDelay = 250;
                     NSDocumentController *documentController = [[NSDocumentController alloc] init];
                     [documentController openDocumentWithContentsOfURL:selectedFile
                                                               display:YES
-                                                    completionHandler:^(NSDocument *document, BOOL documentWasAlreadyOpen, NSError *error){
-                                                    }];
+                                                    completionHandler:nil];
                 }
             }
         }
     }];
 }
 
+- (IBAction)import:(id)sender
+{
+    NSOpenPanel *openPanel = [NSOpenPanel openPanel];
+    openPanel.allowedFileTypes = @[kJSONFileExension];
+
+    openPanel.title = @"Import JSON";
+    openPanel.prompt = @"Import";
+
+    [openPanel beginWithCompletionHandler:^(NSInteger result) {
+        if (result == NSFileHandlingPanelOKButton) {
+            [self importJSONAtURL:openPanel.URL];
+        }
+    }];
+}
+
 #pragma mark - Private methods
+
+- (BOOL)importJSONAtURL:(NSURL *)jsonURL
+{
+    NSString *filenameWithoutExtension = [jsonURL.lastPathComponent stringByDeletingPathExtension];
+    NSString *jsonDir = [jsonURL.path stringByDeletingLastPathComponent];
+    NSString *outFilename = [NSString stringWithFormat:@"%@.realm", filenameWithoutExtension];
+    NSURL *outURL = [NSURL fileURLWithPath:[jsonDir stringByAppendingPathComponent:outFilename]];
+
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    if ([fileManager fileExistsAtPath:outURL.path isDirectory:nil]) {
+        [fileManager removeItemAtURL:outURL error:nil];
+    }
+
+    
+    return YES;
+}
 
 - (BOOL)createAndPopulateDemoDatabaseAtUrl:(NSURL *)url
 {
@@ -177,7 +208,7 @@ const NSUInteger kTopTipDelay = 250;
     return NO;
 }
 
-- (void)showSavePanelStringFromDirectory:(NSURL *)directoryUrl completionHandler:(void(^)(BOOL userSelectesFile, NSURL *selectedFile))completion
+- (void)showSavePanelStringFromDirectory:(NSURL *)directoryUrl completionHandler:(void(^)(BOOL userSelectedFile, NSURL *selectedFile))completion
 {
     NSSavePanel * savePanel = [NSSavePanel savePanel];
     

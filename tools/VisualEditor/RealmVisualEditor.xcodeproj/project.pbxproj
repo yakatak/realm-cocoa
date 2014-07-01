@@ -41,6 +41,7 @@
 		84E0F9731921F3B900D6CA14 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 84E0F94F1921F3B900D6CA14 /* Cocoa.framework */; };
 		84E0F97B1921F3B900D6CA14 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 84E0F9791921F3B900D6CA14 /* InfoPlist.strings */; };
 		84E0F97D1921F3B900D6CA14 /* RealmVisualEditorTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 84E0F97C1921F3B900D6CA14 /* RealmVisualEditorTests.m */; };
+		E8CF892319623143004AE9C8 /* RLMSchema+JSON.m in Sources */ = {isa = PBXBuildFile; fileRef = E8CF892219623143004AE9C8 /* RLMSchema+JSON.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -157,6 +158,8 @@
 		84E0F9781921F3B900D6CA14 /* RealmVisualEditorTests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "RealmVisualEditorTests-Info.plist"; sourceTree = "<group>"; };
 		84E0F97A1921F3B900D6CA14 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		84E0F97C1921F3B900D6CA14 /* RealmVisualEditorTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RealmVisualEditorTests.m; sourceTree = "<group>"; };
+		E8CF892119623143004AE9C8 /* RLMSchema+JSON.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "RLMSchema+JSON.h"; path = "Classes/RLMSchema+JSON.h"; sourceTree = "<group>"; };
+		E8CF892219623143004AE9C8 /* RLMSchema+JSON.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = "RLMSchema+JSON.m"; path = "Classes/RLMSchema+JSON.m"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -259,6 +262,8 @@
 				84AA41C8194E108B00A50F03 /* NSTableColumn+Resize.m */,
 				84945D5F1945CCBB0081C67B /* RLMObject+ResolvedClass.h */,
 				84945D601945CCBB0081C67B /* RLMObject+ResolvedClass.m */,
+				E8CF892119623143004AE9C8 /* RLMSchema+JSON.h */,
+				E8CF892219623143004AE9C8 /* RLMSchema+JSON.m */,
 			);
 			name = Extensions;
 			sourceTree = "<group>";
@@ -532,6 +537,7 @@
 				84E0F95C1921F3B900D6CA14 /* main.m in Sources */,
 				84925C61195AD5B000EE27B1 /* NSColor+ByteSizeFactory.m in Sources */,
 				844C34E3194859080027E902 /* TestClasses.m in Sources */,
+				E8CF892319623143004AE9C8 /* RLMSchema+JSON.m in Sources */,
 				84446534195891AA00CEEA5B /* RLMViewController.m in Sources */,
 				84945D611945CCBB0081C67B /* RLMObject+ResolvedClass.m in Sources */,
 				84D7990C19388E8900FC76A0 /* RLMClazzProperty.m in Sources */,
