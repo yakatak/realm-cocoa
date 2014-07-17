@@ -28,6 +28,7 @@ appledoc \
     --ignore "Realm/RLMSchema.h" \
     --ignore "Realm/RLMQueryUtil.h" \
     --ignore "Realm/RLMUtil.h" \
+    --ignore "Realm/RLMRealm_Dynamic.h" \
     --ignore "Realm/Tests/QueryTests.m" \
     --ignore "Realm/Tests/TransactionTests.m" \
     --ignore "Realm/Tests/ObjectTests.m" \
@@ -71,6 +72,7 @@ appledoc \
     --ignore "Realm/RLMSchema.h" \
     --ignore "Realm/RLMQueryUtil.h" \
     --ignore "Realm/RLMUtil.h" \
+    --ignore "Realm/RLMRealm_Dynamic.h" \
     --ignore "Realm/Tests/QueryTests.m" \
     --ignore "Realm/Tests/TransactionTests.m" \
     --ignore "Realm/Tests/ObjectTests.m" \
