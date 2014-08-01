@@ -22,7 +22,7 @@
 #import "RLMObject.h"
 #import "RLMUtil.hpp"
 
-#ifdef REALM_SWIFT
+#if REALM_SWIFT
 #import <Realm/Realm-Swift.h>
 #endif
 
@@ -94,7 +94,7 @@ static NSMutableDictionary *s_classNameToMangledName;
             // if direct subclass
             if (class_getSuperclass(classes[i]) == RLMObject.class) {
                 RLMObjectSchema *objectSchema = nil;
-#ifdef REALM_SWIFT
+#if REALM_SWIFT
                 // if swift
                 NSString *className = NSStringFromClass(classes[i]);
                 if ([RLMSwiftSupport isSwiftClassName:className]) {
@@ -178,7 +178,7 @@ void RLMRealmSetSchemaVersion(RLMRealm *realm, NSUInteger version) {
 }
 
 + (Class)classForString:(NSString *)className {
-#ifdef REALM_SWIFT
+#if REALM_SWIFT
     if (s_classNameToMangledName[className]) {
         className = s_classNameToMangledName[className];
     }
