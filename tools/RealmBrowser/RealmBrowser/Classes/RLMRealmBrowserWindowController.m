@@ -172,13 +172,7 @@ const NSUInteger kMaxNumberOfArrayEntriesInToolTip = 5;
         }
     }
 
-    RLMArray *result;
-    if (predicate.length != 0) {
-        result = [realm objects:typeNode.name where:predicate];
-    }
-    else {
-        result = [[RLMArray alloc] init];
-    }
+    RLMArray *result = [realm objects:typeNode.name where:predicate];
 
     RLMQueryNavigationState *state = [[RLMQueryNavigationState alloc] initWithQuery:searchText type:typeNode results:result];
     [self addNavigationState:state fromViewController:self.tableViewController];
