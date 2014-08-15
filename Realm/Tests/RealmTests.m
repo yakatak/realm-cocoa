@@ -18,6 +18,8 @@
 
 #import "RLMTestCase.h"
 
+#import <libkern/OSAtomic.h>
+
 @interface RLMRealm ()
 
 + (BOOL)isCoreDebug;
@@ -122,13 +124,26 @@
 
     XCTAssertEqual([[StringObject allObjectsInRealm:realm] count], (NSUInteger)1, @"Expecting 1 object");
     XCTAssertEqual(obj.array.count, (NSUInteger)0, @"Expecting 0 objects");
-
+    
     // remove NSArray
     NSArray *arrayOfLastObject = @[[[StringObject allObjectsInRealm:realm] lastObject]];
     [realm beginWriteTransaction];
     [realm deleteObjects:arrayOfLastObject];
     [realm commitWriteTransaction];
     XCTAssertEqual(objects.count, (NSUInteger)0, @"Expecting 0 objects");
+    
+    // add objects to linkView
+    [realm beginWriteTransaction];
+    [obj.array addObject:[StringObject createInRealm:realm withObject:@[@"a"]]];
+    [obj.array addObject:[[StringObject alloc] initWithObject:@[@"b"]]];
+    [realm commitWriteTransaction];
+    
+    // remove objects from realm
+    XCTAssertEqual(obj.array.count, (NSUInteger)2, @"Expecting 2 objects");
+    [realm beginWriteTransaction];
+    [realm deleteObjects:[StringObject allObjectsInRealm:realm]];
+    [realm commitWriteTransaction];
+    XCTAssertEqual(obj.array.count, (NSUInteger)0, @"Expecting 0 objects");
 }
 
 - (void)testRealmTransactionBlock {
@@ -148,7 +163,7 @@
     // we have two notifications, one for opening the realm, and a second when performing our transaction
     __block NSUInteger noteCount = 0;
     XCTestExpectation *notificationFired = [self expectationWithDescription:@"notification fired"];
-    RLMNotificationToken *token = [realm addNotificationBlock:^(__unused NSString *note, RLMRealm * realm) {
+    RLMNotificationToken *token = [realm addNotificationBlock:^(__unused NSString *note, RLMRealm *realm) {
         XCTAssertNotNil(realm, @"Realm should not be nil");
         if (++noteCount == 2) {
             [notificationFired fulfill];
@@ -181,7 +196,7 @@
     // we have two notifications, one for opening the realm, and a second when performing our transaction
     __block NSUInteger noteCount = 0;
     XCTestExpectation *notificationFired = [self expectationWithDescription:@"notification fired"];
-    RLMNotificationToken *token = [realm addNotificationBlock:^(__unused NSString *note, RLMRealm * realm) {
+    RLMNotificationToken *token = [realm addNotificationBlock:^(__unused NSString *note, RLMRealm *realm) {
         XCTAssertNotNil(realm, @"Realm should not be nil");
         if (++noteCount == 2) {
             [notificationFired fulfill];
@@ -223,7 +238,7 @@
     // we have two notifications, one for opening the realm, and a second when performing our transaction
     __block NSUInteger noteCount = 0;
     __block XCTestExpectation *notificationFired = [self expectationWithDescription:@"notification fired"];
-    RLMNotificationToken *token = [realm addNotificationBlock:^(__unused NSString *note, RLMRealm * realm) {
+    RLMNotificationToken *token = [realm addNotificationBlock:^(__unused NSString *note, RLMRealm *realm) {
         XCTAssertNotNil(realm, @"Realm should not be nil");
         if (++noteCount == 2) {
             [notificationFired fulfill];
@@ -275,7 +290,7 @@
 /* FIXME: disabled until we have per file compile options
  - (void)testRealmWriteImplicitCommit
  {
- RLMRealm * realm = [self realmWithTestPath];
+ RLMRealm *realm = [self realmWithTestPath];
  [realm beginWriteTransaction];
  RLMTable *table = [realm createTableWithName:@"table"];
  [table addColumnWithName:@"col0" type:RLMPropertyTypeInt];
@@ -346,6 +361,22 @@
     NSError *error;
     XCTAssertNil([RLMRealm realmWithPath:filePath readOnly:NO error:&error], @"Invalid database");
     XCTAssertNotNil(error, @"Should populate error object");
+}
+
+- (void)testCrossThreadAccess
+{
+    RLMRealm *realm = RLMRealm.defaultRealm;
+
+    // Using dispatch_async to ensure it actually lands on another thread
+    __block OSSpinLock spinlock = OS_SPINLOCK_INIT;
+    OSSpinLockLock(&spinlock);
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        XCTAssertThrows([realm beginWriteTransaction]);
+        XCTAssertThrows([IntObject allObjectsInRealm:realm]);
+        XCTAssertThrows([IntObject objectsInRealm:realm where:@"intCol = 0"]);
+        OSSpinLockUnlock(&spinlock);
+    });
+    OSSpinLockLock(&spinlock);
 }
 
 @end

@@ -1,3 +1,44 @@
+0.84.0 Release notes (YYYY-MM-DD)
+=============================================================
+
+### API breaking changes
+
+### Enhancements
+
+* Add support for the IN operator in predicates.
+* Switch to building the SDK from source when using CocoaPods and add a
+  Realm.Headers subspec for use in targets that should not link a copy of Realm
+  (such as test targets).
+
+### Bugfixes
+
+0.83.0 Release notes (2014-08-13)
+=============================================================
+
+### API breaking changes
+
+* Realm-Xcode6.xcodeproj now only builds using Xcode6-Beta5.
+* Properties to be persisted in Swift classes must be explicitly declared as `dynamic`.
+* Subclasses of RLMObject subclasses now throw an exception on startup, rather
+  than when added to a Realm.
+
+### Enhancements
+
+* Add support for querying for nil object properties.
+* Improve error message when specifying invalid literals when creating or 
+  initializing RLMObjects.
+* Throw an exception when an RLMObject is used from the incorrect thread rather
+  than crashing in confusing ways.
+* Speed up RLMRealm instantiation and array property iteration.
+* Allow array and objection relation properties to be missing or null when
+  creating a RLMObject from a NSDictionary.
+
+### Bugfixes
+
+* Fixed a memory leak when querying for objects.
+* Fixed initializing array properties on standalone Swift RLMObject subclasses.
+* Fix for queries on 64bit integers.
+
 0.82.0 Release notes (2014-08-05)
 =============================================================
 
@@ -31,7 +72,8 @@
 * Clarified exception messages when using unsupported NSPredicate operators.
 * Clarified exception messages when using unsupported property types on RLMObject subclasses.
 * Fixed a memory leak when breaking out of a for-in loop on RLMArray.
-* Fixed memory leak when removing objects from a RLMArray property.
+* Fixed a memory leak when removing objects from a RLMArray property.
+* Fixed a memory leak when querying for objects.
 
 
 0.81.0 Release notes (2014-07-22)

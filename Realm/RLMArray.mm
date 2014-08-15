@@ -26,19 +26,27 @@
 
 @synthesize realm = _realm;
 @synthesize objectClassName = _objectClassName;
-@dynamic readOnly;
 
 - (instancetype)initWithObjectClassName:(NSString *)objectClassName {
     self = [super init];
     if (self) {
         _objectClassName = objectClassName;
-        _readOnly = NO;
+        _backingArray = [[NSMutableArray alloc] init];
     }
     return self;
 }
 
+- (instancetype)initViewWithObjectClassName:(NSString *)objectClassName {
+    self = [super init];
+    if (self) {
+        _objectClassName = objectClassName;
+    }
+    return self;
+
+}
+
 - (BOOL)isReadOnly {
-    return _readOnly;
+    return NO;
 }
 
 //
@@ -96,7 +104,7 @@
 // Stanalone RLMArray implementation
 //
 
-void RLMValidateMatchingObjectType(RLMArray *array, RLMObject *object) {
+static void RLMValidateMatchingObjectType(RLMArray *array, RLMObject *object) {
     if (![array->_objectClassName isEqualToString:object.objectSchema.className]) {
         @throw [NSException exceptionWithName:@"RLMException"
                                        reason:@"Object type does not match RLMArray"

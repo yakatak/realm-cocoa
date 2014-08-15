@@ -35,24 +35,28 @@
 
 + (instancetype)arrayWithObjectClassName:(NSString *)objectClassName
                                    view:(tightdb::TableView const &)view
-                                  realm:(RLMRealm *)realm{
-    RLMArrayTableView *ar = [[RLMArrayTableView alloc] initWithObjectClassName:objectClassName];
+                                  realm:(RLMRealm *)realm {
+    RLMArrayTableView *ar = [[RLMArrayTableView alloc] initViewWithObjectClassName:objectClassName];
     ar->_backingView = view;
     ar->_realm = realm;
-    ar->_readOnly = YES;
     return ar;
+}
+
+- (BOOL)isReadOnly {
+    return YES;
 }
 
 //
 // validation helper
 //
-inline void RLMArrayTableViewValidateAttached(RLMArrayTableView *ar) {
+static inline void RLMArrayTableViewValidateAttached(RLMArrayTableView *ar) {
     if (!ar->_backingView.is_attached()) {
         @throw [NSException exceptionWithName:@"RLMException" reason:@"RLMArray is no longer valid" userInfo:nil];
     }
     ar->_backingView.sync_if_needed();
+    RLMCheckThread(ar->_realm);
 }
-inline void RLMArrayTableViewValidateInWriteTransaction(RLMArrayTableView *ar) {
+static inline void RLMArrayTableViewValidateInWriteTransaction(RLMArrayTableView *ar) {
     // first verify attached
     RLMArrayTableViewValidateAttached(ar);
 

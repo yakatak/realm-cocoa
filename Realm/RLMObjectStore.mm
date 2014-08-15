@@ -16,6 +16,7 @@
 //
 ////////////////////////////////////////////////////////////////////////////
 
+#import "RLMObjectStore.h"
 #import "RLMRealm_Private.hpp"
 #import "RLMArray_Private.hpp"
 #import "RLMSchema_Private.h"
@@ -29,20 +30,20 @@
 #import <objc/runtime.h>
 
 // get the table used to store object of objectClass
-inline tightdb::TableRef RLMTableForObjectClass(RLMRealm *realm,
-                                                NSString *className,
-                                                bool &created) {
+static inline tightdb::TableRef RLMTableForObjectClass(RLMRealm *realm,
+                                                       NSString *className,
+                                                       bool &created) {
     NSString *tableName = realm.schema.tableNamesForClass[className];
     return realm.group->get_table(tableName.UTF8String, created);
 }
-inline tightdb::TableRef RLMTableForObjectClass(RLMRealm *realm,
-                                                NSString *className) {
+static inline tightdb::TableRef RLMTableForObjectClass(RLMRealm *realm,
+                                                       NSString *className) {
     NSString *tableName = realm.schema.tableNamesForClass[className];
     return realm.group->get_table(tableName.UTF8String);
 }
 
 
-void RLMVerifyAndAlignColumns(RLMObjectSchema *tableSchema, RLMObjectSchema *objectSchema) {
+static void RLMVerifyAndAlignColumns(RLMObjectSchema *tableSchema, RLMObjectSchema *objectSchema) {
     // FIXME - this method should calculate all mismatched columns, and missing/extra columns, and include
     //         all of this information in a single exception
     // FIXME - verify property attributes
@@ -88,7 +89,7 @@ void RLMVerifyAndAlignColumns(RLMObjectSchema *tableSchema, RLMObjectSchema *obj
 
 
 // verify and align all tables in schema
-void RLMVerifyAndAlignSchema(RLMSchema *schema) {
+static void RLMVerifyAndAlignSchema(RLMSchema *schema) {
     for (RLMObjectSchema *objectSchema in schema.objectSchema) {
         // get table schema
         tightdb::Table &table = *objectSchema->_table;
@@ -108,7 +109,7 @@ void RLMVerifyAndAlignSchema(RLMSchema *schema) {
 
 // create a column for a property in a table
 // NOTE: must be called from within write transaction
-void RLMCreateColumn(RLMRealm *realm, tightdb::Table &table, RLMProperty *prop) {
+static void RLMCreateColumn(RLMRealm *realm, tightdb::Table &table, RLMProperty *prop) {
     switch (prop.type) {
             // for objects and arrays, we have to specify target table
         case RLMPropertyTypeObject:
@@ -127,7 +128,7 @@ void RLMCreateColumn(RLMRealm *realm, tightdb::Table &table, RLMProperty *prop) 
 }
 
 // NOTE: must be called from within write transaction
-bool RLMCreateMissingTables(RLMRealm *realm) {
+static bool RLMCreateMissingTables(RLMRealm *realm) {
     bool changed = false;
     for (RLMObjectSchema *objectSchema in realm.schema.objectSchema) {
         bool created = false;
@@ -142,7 +143,7 @@ bool RLMCreateMissingTables(RLMRealm *realm) {
 
 // add missing columns to objects described in targetSchema
 // NOTE: must be called from within write transaction
-bool RLMAddMissingColumns(RLMRealm *realm) {
+static bool RLMAddMissingColumns(RLMRealm *realm) {
     bool added = false;
     for (RLMObjectSchema *objectSchema in realm.schema.objectSchema) {
         // add columns
@@ -160,7 +161,7 @@ bool RLMAddMissingColumns(RLMRealm *realm) {
 
 // remove old columns in the realm not in targetSchema
 // NOTE: must be called from within write transaction
-bool RLMRemoveExtraColumns(RLMRealm *realm) {
+static bool RLMRemoveExtraColumns(RLMRealm *realm) {
     bool removed = false;
     for (RLMObjectSchema *objectSchema in realm.schema.objectSchema) {
         RLMObjectSchema *tableSchema = [RLMObjectSchema schemaForTable:objectSchema->_table.get() className:objectSchema.className];
@@ -209,13 +210,14 @@ bool RLMRealmSetSchema(RLMRealm *realm, RLMSchema *targetSchema, bool migration)
     return changed;
 }
 
-inline void RLMVerifyInWriteTransaction(RLMRealm *realm) {
+static inline void RLMVerifyInWriteTransaction(RLMRealm *realm) {
     // if realm is not writable throw
     if (!realm.inWriteTransaction) {
         @throw [NSException exceptionWithName:@"RLMException"
                                        reason:@"Can only add an object to a Realm in a write transaction - call beginWriteTransaction on a RLMRealm instance first."
                                      userInfo:nil];
     }
+    RLMCheckThread(realm);
 }
 
 void RLMAddObjectToRealm(RLMObject *object, RLMRealm *realm) {
@@ -272,8 +274,8 @@ RLMObject *RLMCreateObjectInRealmWithValue(RLMRealm *realm, NSString *className,
     RLMObject *object = [[objectSchema.objectClass alloc] initWithRealm:realm schema:objectSchema defaultValues:NO];
 
     // validate values, create row, and populate
-    if ([value isKindOfClass:NSArray.class]) {
-        NSArray *array = RLMValidatedArrayForObjectSchema(value, objectSchema, schema);
+    if (NSArray *array = RLMDynamicCast<NSArray>(value)) {
+        array = RLMValidatedArrayForObjectSchema(value, objectSchema, schema);
 
         // create row
         tightdb::Table &table = *objectSchema->_table;
@@ -286,8 +288,8 @@ RLMObject *RLMCreateObjectInRealmWithValue(RLMRealm *realm, NSString *className,
             RLMDynamicSet(object, (RLMProperty *)props[i], array[i]);
         }
     }
-    else if ([value isKindOfClass:NSDictionary.class]) {
-        NSDictionary *dict = RLMValidatedDictionaryForObjectSchema(value, objectSchema, schema);
+    else if (NSDictionary *dict = RLMDynamicCast<NSDictionary>(value)) {
+        dict = RLMValidatedDictionaryForObjectSchema(value, objectSchema, schema);
 
         // create row
         tightdb::Table &table = *objectSchema->_table;
@@ -320,22 +322,26 @@ void RLMDeleteObjectFromRealm(RLMObject *object) {
 }
 
 RLMArray *RLMGetObjects(RLMRealm *realm, NSString *objectClassName, NSPredicate *predicate, NSString *order) {
+    RLMCheckThread(realm);
+
     // create view from table and predicate
     RLMObjectSchema *objectSchema = realm.schema[objectClassName];
-    tightdb::Query *query = new tightdb::Query(objectSchema->_table->where());
-    RLMUpdateQueryWithPredicate(query, predicate, realm.schema, objectSchema);
+    tightdb::Query query = objectSchema->_table->where();
+    RLMUpdateQueryWithPredicate(&query, predicate, realm.schema, objectSchema);
     
     // create view and sort
-    tightdb::TableView view = query->find_all();
+    tightdb::TableView view = query.find_all();
     RLMUpdateViewWithOrder(view, objectSchema, order, YES);
     
     // create and populate array
-    __autoreleasing RLMArray * array = [RLMArrayTableView arrayWithObjectClassName:objectClassName view:view realm:realm];
+    __autoreleasing RLMArray *array = [RLMArrayTableView arrayWithObjectClassName:objectClassName view:view realm:realm];
     return array;
 }
 
 // Create accessor and register with realm
 RLMObject *RLMCreateObjectAccessor(RLMRealm *realm, NSString *objectClassName, NSUInteger index) {
+    RLMCheckThread(realm);
+
     RLMObjectSchema *objectSchema = realm.schema[objectClassName];
     
     // get accessor for the object class
