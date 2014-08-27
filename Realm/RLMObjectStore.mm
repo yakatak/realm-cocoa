@@ -34,12 +34,12 @@ static inline tightdb::TableRef RLMTableForObjectClass(RLMRealm *realm,
                                                        NSString *className,
                                                        bool &created) {
     NSString *tableName = realm.schema.tableNamesForClass[className];
-    return realm.group->get_table(tableName.UTF8String, created);
+    return realm.group->get_or_add_table(tableName.UTF8String, &created);
 }
 static inline tightdb::TableRef RLMTableForObjectClass(RLMRealm *realm,
                                                        NSString *className) {
     NSString *tableName = realm.schema.tableNamesForClass[className];
-    return realm.group->get_table(tableName.UTF8String);
+    return realm.group->get_or_add_table(tableName.UTF8String);
 }
 
 
@@ -178,35 +178,55 @@ static bool RLMRemoveExtraColumns(RLMRealm *realm) {
     return removed;
 }
 
-bool RLMRealmSetSchema(RLMRealm *realm, RLMSchema *targetSchema, bool migration) {
+bool RLMRealmIntializeWithSchema(RLMRealm *realm, RLMSchema *targetSchema) {
+    @try {
+        // begin transaction
+        [realm beginWriteTransaction];
+
+        // check to see if this is the first time loading this realm
+        bool initializing = (RLMRealmSchemaVersion(realm) == RLMNotVersioned);
+        if (initializing) {
+            // set initial version
+            RLMRealmSetSchemaVersion(realm, 0);
+        }
+
+        // set the schema, mutating if we are initializing the db for the first time
+        RLMRealmSetSchema(realm, targetSchema, initializing);
+    }
+    @finally {
+        // FIXME: should rollback on exceptions rather than commit once that's implemented
+        [realm commitWriteTransaction];
+    }
+}
+
+bool RLMRealmSetSchema(RLMRealm *realm, RLMSchema *targetSchema, bool allowMutation) {
     // set new schema
     realm.schema = [targetSchema copy];
 
-    // first pass create missing tables and verify existing
+    // create missing tables
     bool changed = RLMCreateMissingTables(realm);
 
-    // if not migrating then verify all non-empty tables
-    if (!migration) {
+    if (!allowMutation) {
+        // if not mutating then verify all tables match our schema
         for (RLMObjectSchema *objectSchema in realm.schema.objectSchema) {
-            if (objectSchema->_table->get_column_count()) {
-                RLMObjectSchema *tableSchema = [RLMObjectSchema schemaForTable:objectSchema->_table.get()
-                                                                     className:objectSchema.className];
-                RLMVerifyAndAlignColumns(tableSchema, objectSchema);
-            }
+            RLMObjectSchema *tableSchema = [RLMObjectSchema schemaForTable:objectSchema->_table.get()
+                                                                 className:objectSchema.className];
+            RLMVerifyAndAlignColumns(tableSchema, objectSchema);
         }
     }
+    else {
+        // if mutating, add columns
+        changed = RLMAddMissingColumns(realm) || changed;
 
-    // second pass add columns to empty tables
-    changed = RLMAddMissingColumns(realm) || changed;
-    
-    // remove expired columns
-    changed = RLMRemoveExtraColumns(realm) || changed;
-    
-    // FIXME - remove deleted objects
+        // remove expired columns
+        changed = RLMRemoveExtraColumns(realm) || changed;
+        
+        // FIXME - remove deleted objects
+    }
     
     // align all tables
     RLMVerifyAndAlignSchema(realm.schema);
-    
+
     return changed;
 }
 
@@ -228,12 +248,24 @@ void RLMAddObjectToRealm(RLMObject *object, RLMRealm *realm) {
 
     // verify writable
     RLMVerifyInWriteTransaction(realm);
-    
+
+    // verify object
+    if (object.deletedFromRealm) {
+        @throw [NSException exceptionWithName:@"RLMException"
+                                       reason:@"Adding a deleted object to a Realm is not permitted"
+                                     userInfo:nil];
+    }
+
     // set the realm and schema
     NSString *objectClassName = [object.class className];
     RLMObjectSchema *schema = realm.schema[objectClassName];
     object.objectSchema = schema;
     object.realm = realm;
+
+    // _row may already be attached to a different table if the object was
+    // already in another realm, and setting it to the new table doesn't
+    // automatically detach it
+    object->_row.detach();
 
     // create row in table
     tightdb::Table &table = *schema->_table;
@@ -319,6 +351,9 @@ void RLMDeleteObjectFromRealm(RLMObject *object) {
 
     // move last row to row we are deleting
     object->_row.get_table()->move_last_over(object->_row.get_index());
+
+    // set realm to nil
+    object.realm = nil;
 }
 
 RLMArray *RLMGetObjects(RLMRealm *realm, NSString *objectClassName, NSPredicate *predicate, NSString *order) {

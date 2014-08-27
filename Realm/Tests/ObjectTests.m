@@ -85,6 +85,16 @@
 }
 @end
 
+#pragma mark CycleObject
+@class CycleObject;
+RLM_ARRAY_TYPE(CycleObject)
+@interface CycleObject :RLMObject
+@property RLMArray<CycleObject> *objects;
+@end
+
+@implementation CycleObject
+@end
+
 #pragma mark - Private
 
 @interface RLMRealm ()
@@ -202,10 +212,10 @@
     NSDictionary *invalidDict= @{@"employees": @[@[@"Alex", @29, @2]]};
     XCTAssertThrows([[CompanyObject alloc] initWithObject:invalidDict], @"Dictionary missing properties should throw");
 
-    OwnerObject *owner = [[OwnerObject alloc] initWithObject:@[@"Brian", @{@"dogName": @"Brido"}]];
+    OwnerObject *owner = [[OwnerObject alloc] initWithObject:@[@"Brian", @{@"dogName": @"Brido", @"age": @0}]];
     XCTAssertEqualObjects(owner.dog.dogName, @"Brido");
 
-    OwnerObject *ownerArrayDog = [[OwnerObject alloc] initWithObject:@[@"JP", @[@"PJ"]]];
+    OwnerObject *ownerArrayDog = [[OwnerObject alloc] initWithObject:@[@"JP", @[@"PJ", @0]]];
     XCTAssertEqualObjects(ownerArrayDog.dog.dogName, @"PJ");
 }
 
@@ -601,8 +611,8 @@
     // create with object literals
     [realm beginWriteTransaction];
 
-    [OwnerObject createInDefaultRealmWithObject:@[@"Brian", @{@"dogName": @"Brido"}]];
-    [OwnerObject createInDefaultRealmWithObject:@[@"JP", @[@"PJ"]]];
+    [OwnerObject createInDefaultRealmWithObject:@[@"Brian", @{@"dogName": @"Brido", @"age": @0}]];
+    [OwnerObject createInDefaultRealmWithObject:@[@"JP", @[@"PJ", @0]]];
 
     [realm commitWriteTransaction];
 
@@ -642,7 +652,7 @@
     [realm addObject:soInit];
     
     // description asserts block
-    void(^descriptionAsserts)(NSString *) = ^(NSString *description) {
+    void (^descriptionAsserts)(NSString *) = ^(NSString *description) {
         XCTAssertTrue([description rangeOfString:@"name"].location != NSNotFound, @"column names should be displayed when calling \"description\" on RLMObject subclasses");
         XCTAssertTrue([description rangeOfString:@"Peter"].location != NSNotFound, @"column values should be displayed when calling \"description\" on RLMObject subclasses");
         
@@ -661,6 +671,16 @@
     // Test description in read block
     NSString *objDescription = [[[EmployeeObject objectsWithPredicate:nil] firstObject] description];
     descriptionAsserts(objDescription);
+}
+
+- (void)testObjectCycleDescription
+{
+    CycleObject *obj = [[CycleObject alloc] init];
+    [RLMRealm.defaultRealm transactionWithBlock:^{
+        [RLMRealm.defaultRealm addObject:obj];
+        [obj.objects addObject:obj];
+    }];
+    XCTAssertNoThrow(obj.description);
 }
 
 #pragma mark - Indexing Tests
@@ -754,6 +774,36 @@
         OSSpinLockUnlock(&spinlock);
     });
     OSSpinLockLock(&spinlock);
+}
+
+- (void)testIsDeleted {
+    StringObject *obj1 = [[StringObject alloc] initWithObject:@[@"a"]];
+    XCTAssertEqual(obj1.deletedFromRealm, NO);
+
+    RLMRealm *realm = [self realmWithTestPath];
+    [realm beginWriteTransaction];
+    [realm addObject:obj1];
+    StringObject *obj2 = [StringObject createInRealm:realm withObject:@[@"b"]];
+
+    XCTAssertEqual([obj1 isDeletedFromRealm], NO);
+    XCTAssertEqual(obj2.deletedFromRealm, NO);
+
+    [realm commitWriteTransaction];
+
+    // delete
+    [realm beginWriteTransaction];
+    [realm deleteObject:obj1];
+    [realm deleteObject:obj2];
+
+    XCTAssertEqual(obj1.deletedFromRealm, YES);
+    XCTAssertEqual(obj2.deletedFromRealm, YES);
+
+    XCTAssertThrows([realm addObject:obj1], @"Adding deleted object should throw");
+    
+    [realm commitWriteTransaction];
+
+    XCTAssertEqual(obj1.deletedFromRealm, YES);
+    XCTAssertNil(obj1.realm, @"Realm should be nil after deletion");
 }
 
 @end

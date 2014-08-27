@@ -202,16 +202,37 @@
 
 - (NSString *)description
 {
+    return [self descriptionWithMaxDepth:5];
+}
+
+- (NSString *)descriptionWithMaxDepth:(NSUInteger)depth {
+    if (depth == 0) {
+        return @"<Maximum depth exceeded>";
+    }
+
     NSString *baseClassName = self.objectSchema.className;
     NSMutableString *mString = [NSMutableString stringWithFormat:@"%@ {\n", baseClassName];
     RLMObjectSchema *objectSchema = self.realm.schema[baseClassName];
     
     for (RLMProperty *property in objectSchema.properties) {
-        [mString appendFormat:@"\t%@ = %@;\n", property.name, [self[property.name] description]];
+        id object = self[property.name];
+        NSString *sub;
+        if ([object respondsToSelector:@selector(descriptionWithMaxDepth:)]) {
+            sub = [object descriptionWithMaxDepth:depth - 1];
+        }
+        else {
+            sub = [object description];
+        }
+        [mString appendFormat:@"\t%@ = %@;\n", property.name, sub];
     }
     [mString appendString:@"}"];
     
     return [NSString stringWithString:mString];
+}
+
+- (BOOL)isDeletedFromRealm {
+    // if not standalone and our accessor has been detached, we have been deleted
+    return self.class == self.objectSchema.accessorClass && !_row.is_attached();
 }
 
 - (BOOL)isEqualToObject:(RLMObject *)object {

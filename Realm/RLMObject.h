@@ -116,7 +116,8 @@
  object, or a JSON object such as those returned from the methods in NSJSONSerialization, or
  an NSArray with one object for each persisted property. An exception will be
  thrown if all required properties are not present or no default is provided.
- When passing in an NSArray, all properties must be present and valid.
+
+ When passing in an NSArray, all properties must be present, valid and in the same order as the properties defined in the model.
 
  @see   defaultPropertyValues
  */
@@ -133,7 +134,8 @@
                 object, or a JSON object such as those returned from the methods in NSJSONSerialization, or
                 an NSArray with one object for each persisted property. An exception will be
                 thrown if all required properties are not present or no default is provided.
-                When passing in an NSArray, all properties must be present and valid.
+                
+                When passing in an NSArray, all properties must be present, valid and in the same order as the properties defined in the model.
  
  @see   defaultPropertyValues
  */
@@ -148,6 +150,11 @@
  The ObjectSchema which lists the persisted properties for this object.
  */
 @property (nonatomic, readonly) RLMObjectSchema *objectSchema;
+
+/**
+ Indicates if an object has been deleted from a Realm and can no longer be accessed.
+ */
+@property (nonatomic, readonly, getter = isDeletedFromRealm) BOOL deletedFromRealm;
 
 
 /**---------------------------------------------------------------------------------------
